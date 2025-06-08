@@ -637,6 +637,8 @@ nav a:hover {
 /* 注册页特有样式 */
 .radio-group, .checkbox-group {
     display: flex;
+    flex-wrap: wrap; /* Added flex-wrap */
+    gap: 15px; /* Added gap */
     margin: 10px 0;
 }
 
@@ -1609,122 +1611,6 @@ input[type="radio"]:checked + .radio-label {
     box-shadow: 0 3px 6px rgba(0,0,0,0.08);
 }
 
-/* Profile page navigation link (e.g., back to team page) - This style is now removed */
-/* .profile-page-nav-link { ... } */
-/* .profile-page-nav-link:hover { ... } */
-
-
-/* 导航栏样式 */
-.navbar {
-    background-color: white;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    padding: 10px 0;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.nav-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: 60px;
-    position: relative; /* 为导航链接添加绝对定位 */
-}
-
-.nav-logo {
-    display: flex;
-    align-items: center;
-    color: #1e3a8a;
-    text-decoration: none;
-}
-
-.nav-logo h1 {
-    margin: 0;
-    font-size: 24px;
-}
-
-nav ul {
-    list-style: none;
-    display: flex;
-    margin: 0;
-    padding: 0;
-}
-
-nav li {
-    margin-left: 20px;
-}
-
-nav a {
-    color: #333;
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.3s;
-}
-
-nav a:hover {
-    color: #1e3a8a;
-}
-
-.user-actions a {
-    margin-left: 15px;
-    text-decoration: none;
-}
-
-.login-btn {
-    color: #1e3a8a;
-    font-weight: bold;
-}
-
-.register-btn {
-    background-color: #1e3a8a;
-    color: white;
-    padding: 8px 15px;
-    border-radius: 4px;
-    transition: background-color 0.3s;
-}
-
-.register-btn:hover {
-    background-color: #152b5e;
-}
-
-/* 新增个人资料导航链接样式 */
-.profile-nav-link {
-    color: white;
-    text-decoration: none;
-    padding: 8px 12px;
-    background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 5px;
-    font-size: 0.9rem;
-    transition: background-color 0.3s;
-    position: absolute; /* 左上角和右上角的公共样式 */
-    z-index: 10; /* 确保在重叠时位于其他头部内容之上 */
-}
-
-.profile-nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.4);
-}
-
-.profile-nav-link.top-left {
-    top: 15px; /* Adjust as needed */
-    left: 15px; /* Adjust as needed */
-}
-
-.profile-nav-link.top-right {
-    top: 15px; /* Adjust as needed */
-    right: 15px; /* Adjust as needed */
-}
-
-/* 主容器 */
-.main-container {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
-
 /* 页脚样式 */
 footer {
     background-color: #1e3a8a;
@@ -1793,17 +1679,123 @@ footer .container {
         width: 50px;
         height: 50px;
     }
-    
+
     .reply-modal-content {
         width: 98%;
         max-height: 90vh;
     }
-    
+
     .reply-modal-header {
         padding: 15px;
     }
-    
+
     .reply-modal-body {
         padding: 15px;
     }
+}
+
+/* 用户协议和隐私政策悬浮窗样式 (从 register.html 移入) */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6); /* 半透明黑色背景 */
+    display: flex; /* 由JS设置，但在此处定义以确保一致性 */
+    align-items: center; /* 垂直居中 */
+    justify-content: center; /* 水平居中 */
+    z-index: 1050; /* 确保在最上层 */
+    padding: 20px; /* 防止内容紧贴屏幕边缘 */
+    overflow-y: auto; /* 如果内容过长，允许覆盖层滚动 */
+}
+
+.modal-content {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+    width: 90%;
+    max-width: 700px; /* 最大宽度 */
+    max-height: 85vh; /* 最大高度，视口高度的85% */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* 配合border-radius */
+}
+
+.modal-header {
+    padding: 18px 25px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.4em; /* 稍大标题 */
+    color: #1e3a8a; /* 标题颜色 */
+    font-weight: 600;
+}
+
+.modal-close {
+    font-size: 1.75em;
+    font-weight: bold;
+    color: #888;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0 5px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.modal-close:hover {
+    color: #333;
+}
+
+.modal-body {
+    padding: 25px;
+    overflow-y: auto; /* 使内容区域可滚动 */
+    flex-grow: 1;
+    line-height: 1.7; /* 增加行高以提高可读性 */
+    color: #444; /* 正文颜色 */
+}
+
+.modal-body h4 {
+    margin-top: 20px;
+    margin-bottom: 8px;
+    color: #1e3a8a; /* 子标题颜色 */
+    font-size: 1.1em;
+    font-weight: 600;
+}
+.modal-body h4:first-child {
+    margin-top: 0;
+}
+
+.modal-body p {
+    margin-bottom: 12px;
+}
+
+.modal-footer {
+    padding: 15px 25px;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    justify-content: flex-end; /* 按钮靠右 */
+    background-color: #f8f9fa; /* 页脚背景色 */
+}
+
+.modal-btn {
+    background-color: #1e3a8a;
+    color: white;
+    padding: 10px 25px; /* 增加按钮内边距 */
+    border: none;
+    border-radius: 5px; /* 圆角 */
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.modal-btn:hover {
+    background-color: #152b5e; /* 悬停颜色加深 */
 }

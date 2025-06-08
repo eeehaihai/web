@@ -1,0 +1,25 @@
+2025/06/08 15:56:02 [notice] 70628#68416: using the "select" event method
+2025/06/08 15:56:02 [notice] 70628#68416: nginx/1.15.11
+2025/06/08 15:56:02 [notice] 70628#68416: start worker processes
+2025/06/08 15:56:02 [notice] 70628#68416: start worker process 19144
+2025/06/08 15:56:02 [notice] 19144#69208: nginx/1.15.11
+2025/06/08 15:56:02 [notice] 19144#69208: create thread 70060
+2025/06/08 15:56:02 [notice] 19144#69208: create thread 53312
+2025/06/08 15:56:02 [notice] 19144#69208: create thread 35976
+2025/06/08 15:56:02 [notice] 70628#68416: start worker process 65340
+2025/06/08 15:56:02 [notice] 65340#69384: nginx/1.15.11
+2025/06/08 15:56:02 [notice] 65340#69384: create thread 30288
+2025/06/08 15:56:02 [notice] 65340#69384: create thread 41504
+2025/06/08 15:56:02 [notice] 65340#69384: create thread 68628
+2025/06/08 15:56:02 [notice] 70628#68416: start worker process 70408
+2025/06/08 15:56:02 [notice] 70408#69156: nginx/1.15.11
+2025/06/08 15:56:02 [notice] 70408#69156: create thread 5200
+2025/06/08 15:56:02 [notice] 70408#69156: create thread 68920
+2025/06/08 15:56:02 [notice] 70408#69156: create thread 64572
+2025/06/08 15:56:02 [notice] 70628#68416: start worker process 69504
+2025/06/08 15:56:02 [notice] 69504#69628: nginx/1.15.11
+2025/06/08 15:56:02 [notice] 69504#69628: create thread 69652
+2025/06/08 15:56:02 [notice] 69504#69628: create thread 52524
+2025/06/08 15:56:02 [notice] 69504#69628: create thread 60268
+2025/06/08 16:16:12 [error] 19144#70060: *4 CreateFile() "D:/mylearn/phpstudy_pro/WWW/hwk1/favicon.ico" failed (2: The system cannot find the file specified), client: 127.0.0.1, server: blablabla, request: "GET /favicon.ico HTTP/1.1", host: "blablabla", referrer: "http://blablabla/"
+2025/06/08 16:16:12 [error] 19144#70060: *4 CreateFile() "D:/mylearn/phpstudy_pro/WWW/hwk1/error/404.html" failed (3: The system cannot find the path specified), client: 127.0.0.1, server: blablabla, request: "GET /favicon.ico HTTP/1.1", host: "blablabla", referrer: "http://blablabla/"
