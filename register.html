@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <style>
+        /* 用户协议和隐私政策悬浮窗样式 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6); /* 半透明黑色背景 */
+    display: flex; /* 由JS设置，但在此处定义以确保一致性 */
+    align-items: center; /* 垂直居中 */
+    justify-content: center; /* 水平居中 */
+    z-index: 1050; /* 确保在最上层 */
+    padding: 20px; /* 防止内容紧贴屏幕边缘 */
+    overflow-y: auto; /* 如果内容过长，允许覆盖层滚动 */
+}
+
+.modal-content {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+    width: 90%;
+    max-width: 700px; /* 最大宽度 */
+    max-height: 85vh; /* 最大高度，视口高度的85% */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* 配合border-radius */
+}
+
+.modal-header {
+    padding: 18px 25px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.4em; /* 稍大标题 */
+    color: #1e3a8a; /* 标题颜色 */
+    font-weight: 600;
+}
+
+.modal-close {
+    font-size: 1.75em;
+    font-weight: bold;
+    color: #888;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0 5px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.modal-close:hover {
+    color: #333;
+}
+
+.modal-body {
+    padding: 25px;
+    overflow-y: auto; /* 使内容区域可滚动 */
+    flex-grow: 1;
+    line-height: 1.7; /* 增加行高以提高可读性 */
+    color: #444; /* 正文颜色 */
+}
+
+.modal-body h4 {
+    margin-top: 20px;
+    margin-bottom: 8px;
+    color: #1e3a8a; /* 子标题颜色 */
+    font-size: 1.1em;
+    font-weight: 600;
+}
+.modal-body h4:first-child {
+    margin-top: 0;
+}
+
+.modal-body p {
+    margin-bottom: 12px;
+}
+
+.modal-footer {
+    padding: 15px 25px;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    justify-content: flex-end; /* 按钮靠右 */
+    background-color: #f8f9fa; /* 页脚背景色 */
+}
+
+.modal-btn {
+    background-color: #1e3a8a;
+    color: white;
+    padding: 10px 25px; /* 增加按钮内边距 */
+    border: none;
+    border-radius: 5px; /* 圆角 */
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.modal-btn:hover {
+    background-color: #152b5e; /* 悬停颜色加深 */
+}
+    </style>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校园论坛 - 用户注册</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- 引入验证脚本 -->
+    <script src="register.js" defer></script> <!-- 使用 defer 确保DOM加载后执行 -->
+</head>
+<body>
+    <div class="page-container">
+        <h1>校园论坛 - 用户注册</h1>
+        <form id="registerForm" onsubmit="return false;">
+            <!-- 基本信息 -->
+            <fieldset>
+                <legend>基本信息</legend>
+                <div class="form-group">
+                    <label for="username" class="required">用户名</label>
+                    <input type="text" id="username" name="username" required placeholder="请输入5-20位字母、数字或下划线" pattern="[a-zA-Z0-9_]{5,20}">
+                    <span id="username_message" style="color: red; font-size: 14px;"></span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password" class="required">密码</label>
+                    <input type="password" id="password" name="password" required placeholder="请设置8位以上密码" minlength="8">
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirm_password" class="required">确认密码</label>
+                    <input type="password" id="confirm_password" name="confirm_password" required placeholder="请再次输入密码" minlength="8">
+                    <span id="password_match_message" style="color: red; font-size: 14px;"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="email" class="required">电子邮箱</label>
+                    <input type="email" id="email" name="email" required placeholder="请输入有效的电子邮箱">
+                    <span id="email_message" style="color: red; font-size: 14px;"></span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone" class="required">手机号码</label>
+                    <input type="tel" id="phone" name="phone" required placeholder="请输入11位手机号码" pattern="[0-9]{11}">
+                    <span id="phone_message" style="color: red; font-size: 14px;"></span>
+                </div>
+                 <div class="form-group"> <!-- 添加昵称输入字段 -->
+                    <label for="nickname" class="required">昵称</label>
+                    <input type="text" id="nickname" name="nickname" required placeholder="请输入您的昵称">
+                </div>
+            </fieldset>
+            
+            <!-- 协议同意 -->
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="agree_terms" name="agree_terms" required>
+                    <label for="agree_terms" class="required">
+                        我已阅读并同意
+                        <span class="agreement-link" onclick="showModal('userAgreement')" style="color: #2563eb; text-decoration: underline; cursor: pointer;">《校园论坛用户协议》</span>
+                        和
+                        <span class="agreement-link" onclick="showModal('privacyPolicy')" style="color: #2563eb; text-decoration: underline; cursor: pointer;">《隐私政策》</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div id="registerMessage" class="message-box" style="display: none;"></div>
+            
+            <button type="submit" class="register-button" id="submitBtn" onclick="submitRegistration()">注册账号</button>
+            
+            <div class="form-footer">
+                已有账号？<a href="login.html">立即登录</a>
+            </div>
+        </form>
+    </div>
+    
+    <!-- 用户协议悬浮窗 -->
+    <div id="userAgreementModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>校园论坛用户协议</h3>
+                <span class="modal-close" onclick="closeModal('userAgreement')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <h4>第一条 协议的接受</h4>
+                <p>欢迎使用校园论坛！本协议是您与校园论坛之间关于您使用校园论坛服务的法律协议。通过注册、访问或使用校园论坛的任何服务，您表示同意接受本协议的全部条款和条件。</p>
+                
+                <h4>第二条 服务描述</h4>
+                <p>校园论坛是一个为校园用户提供信息交流、资源分享的网络平台。我们提供包括但不限于话题发布、评论互动、信息搜索等服务。</p>
+                
+                <h4>第三条 用户注册</h4>
+                <p>1. 用户注册时必须提供真实、准确、完整的个人信息；</p>
+                <p>2. 用户有义务及时更新注册信息，确保其真实性、准确性；</p>
+                <p>3. 用户应当妥善保管账号和密码，对账号下的所有活动承担责任；</p>
+                <p>4. 禁止恶意注册账号，一人仅限注册一个账号。</p>
+                
+                <h4>第四条 用户行为规范</h4>
+                <p>用户在使用校园论坛服务时，必须遵守以下规定：</p>
+                <p>1. 遵守国家相关法律法规和校园管理规定；</p>
+                <p>2. 不发布违法、有害、威胁、辱骂、诽谤、色情、暴力等内容；</p>
+                <p>3. 不进行恶意注册、刷屏、广告推广等破坏平台秩序的行为；</p>
+                <p>4. 尊重他人知识产权，不侵犯他人合法权益；</p>
+                <p>5. 维护校园论坛的良好氛围，积极参与健康的学术和生活讨论；</p>
+                <p>6. 不传播谣言、虚假信息或进行恶意炒作。</p>
+                
+                <h4>第五条 内容管理</h4>
+                <p>1. 用户发布的内容应当真实、合法，不得含有虚假信息；</p>
+                <p>2. 校园论坛有权对违规内容进行删除、屏蔽等处理；</p>
+                <p>3. 用户对自己发布的内容承担全部法律责任；</p>
+                <p>4. 平台保留对恶意用户进行封号处理的权利。</p>
+                
+                <h4>第六条 隐私保护</h4>
+                <p>校园论坛将按照本站隐私政策保护用户的个人信息，不会在未经授权的情况下向第三方披露用户信息。详细内容请参阅《隐私政策》。</p>
+                
+                <h4>第七条 免责声明</h4>
+                <p>1. 校园论坛仅为信息交流平台，不对用户发布的内容真实性承担责任；</p>
+                <p>2. 因不可抗力、系统维护等原因造成的服务中断，校园论坛不承担责任；</p>
+                <p>3. 用户因使用本服务产生的任何损失，校园论坛不承担赔偿责任；</p>
+                <p>4. 用户之间的交易行为与校园论坛无关，由用户自行承担风险。</p>
+                
+                <h4>第八条 违约处理</h4>
+                <p>1. 用户违反本协议的，校园论坛有权采取删除违规内容、限制功能、暂停账号、永久封禁等措施；</p>
+                <p>2. 情节严重的，校园论坛保留追究法律责任的权利。</p>
+                
+                <h4>第九条 协议修改</h4>
+                <p>校园论坛有权根据需要修改本协议，修改后的协议将在网站上公布。用户继续使用服务视为同意修改后的协议。</p>
+                
+                <h4>第十条 其他</h4>
+                <p>1. 本协议自用户注册之日起生效；</p>
+                <p>2. 如有争议，双方应友好协商解决；</p>
+                <p>3. 本协议的解释权归校园论坛所有。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="closeModal('userAgreement')">我已阅读</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 隐私政策悬浮窗 -->
+    <div id="privacyPolicyModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>校园论坛隐私政策</h3>
+                <span class="modal-close" onclick="closeModal('privacyPolicy')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <h4>引言</h4>
+                <p>校园论坛（以下简称"我们"）深知个人信息对您的重要性，并会尽全力保护您的个人信息安全可靠。我们承诺严格按照本隐私政策处理您的个人信息。</p>
+                
+                <h4>第一条 信息收集</h4>
+                <p>我们收集以下类型的信息：</p>
+                <p><strong>1. 注册信息：</strong>包括用户名、电子邮箱、手机号码等您在注册时主动提供的信息；</p>
+                <p><strong>2. 使用信息：</strong>包括您的浏览记录、发布内容、互动行为、登录时间等使用服务过程中产生的信息；</p>
+                <p><strong>3. 设备信息：</strong>包括设备型号、操作系统、浏览器类型、IP地址、网络类型等技术信息；</p>
+                <p><strong>4. 位置信息：</strong>在您授权的情况下，我们可能收集您的地理位置信息。</p>
+                
+                <h4>第二条 信息使用</h4>
+                <p>我们使用收集的信息用于：</p>
+                <p>1. 提供、维护和改善我们的服务；</p>
+                <p>2. 处理您的请求和回应您的询问；</p>
+                <p>3. 发送重要通知、系统更新和安全提醒；</p>
+                <p>4. 预防欺诈和滥用行为，维护平台安全；</p>
+                <p>5. 进行数据分析以改善用户体验；</p>
+                <p>6. 遵守法律法规要求。</p>
+                
+                <h4>第三条 信息共享</h4>
+                <p>除以下情况外，我们不会向第三方分享您的个人信息：</p>
+                <p>1. 获得您的明确同意；</p>
+                <p>2. 法律法规要求或政府部门要求；</p>
+                <p>3. 为保护校园论坛和用户的合法权益；</p>
+                <p>4. 经过匿名化处理的统计数据；</p>
+                <p>5. 与可信的第三方服务提供商合作（在严格保密协议下）。</p>
+                
+                <h4>第四条 信息安全</h4>
+                <p>我们采取以下措施保护您的信息安全：</p>
+                <p>1. 使用SSL加密技术传输和存储敏感信息；</p>
+                <p>2. 定期更新安全防护措施和系统补丁；</p>
+                <p>3. 严格限制员工访问个人信息的权限；</p>
+                <p>4. 定期进行安全审计和漏洞检测；</p>
+                <p>5. 制定数据泄露应急响应预案。</p>
+                
+                <h4>第五条 Cookie 和相似技术</h4>
+                <p>我们使用Cookie和类似技术来：</p>
+                <p>1. 保持您的登录状态；</p>
+                <p>2. 记住您的偏好设置；</p>
+                <p>3. 分析网站使用情况；</p>
+                <p>4. 提供个性化服务和内容推荐。</p>
+                <p>您可以通过浏览器设置控制Cookie的使用，但可能会影响某些功能的正常使用。</p>
+                
+                <h4>第六条 用户权利</h4>
+                <p>您对自己的个人信息享有以下权利：</p>
+                <p><strong>1. 知情权：</strong>您有权了解我们收集、使用您个人信息的情况；</p>
+                <p><strong>2. 访问权：</strong>您有权查看我们持有的关于您的个人信息；</p>
+                <p><strong>3. 更正权：</strong>您有权更正或更新不准确的个人信息；</p>
+                <p><strong>4. 删除权：</strong>在特定情况下，您有权要求删除个人信息；</p>
+                <p><strong>5. 撤回同意：</strong>您有权撤回之前给予的同意；</p>
+                <p><strong>6. 数据携带权：</strong>您有权要求获取个人信息的副本。</p>
+                
+                <h4>第七条 未成年人保护</h4>
+                <p>1. 我们特别重视未成年人的隐私保护；</p>
+                <p>2. 如果您是18岁以下的未成年人，请在监护人的指导和同意下使用我们的服务；</p>
+                <p>3. 监护人应当对未成年人的网络行为进行监督和指导；</p>
+                <p>4. 未成年人不应提供任何个人身份信息。</p>
+                
+                <h4>第八条 数据保留</h4>
+                <p>1. 我们仅在实现本政策所述目的所需的期间内保留您的个人信息；</p>
+                <p>2. 在您注销账户后，我们将删除或匿名化您的个人信息；</p>
+                <p>3. 法律法规另有规定的除外。</p>
+                
+                <h4>第九条 政策更新</h4>
+                <p>1. 我们可能会不时更新本隐私政策；</p>
+                <p>2. 重要更新将通过网站公告、邮件或其他方式通知您；</p>
+                <p>3. 继续使用我们的服务表示您同意更新后的隐私政策。</p>
+                
+                <h4>第十条 联系我们</h4>
+                <p>如果您对本隐私政策有任何疑问、意见或建议，请通过以下方式联系我们：</p>
+                <p>邮箱：privacy@campusforum.edu.cn</p>
+                <p>地址：校园论坛运营团队</p>
+                <p>电话：400-000-0000</p>
+                <p>我们将在收到您的反馈后尽快回复。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="closeModal('privacyPolicy')">我已阅读</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 显示悬浮窗
+        function showModal(type) {
+            const modalId = type === 'userAgreement' ? 'userAgreementModal' : 'privacyPolicyModal';
+            document.getElementById(modalId).style.display = 'flex';
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+        
+        // 关闭悬浮窗
+        function closeModal(type) {
+            const modalId = type === 'userAgreement' ? 'userAgreementModal' : 'privacyPolicyModal';
+            document.getElementById(modalId).style.display = 'none';
+            document.body.style.overflow = 'auto'; // 恢复背景滚动
+        }
+        
+        // 点击悬浮窗外部区域关闭
+        window.addEventListener('click', function(event) {
+            const userModal = document.getElementById('userAgreementModal');
+            const privacyModal = document.getElementById('privacyPolicyModal');
+            
+            if (event.target === userModal) {
+                closeModal('userAgreement');
+            }
+            if (event.target === privacyModal) {
+                closeModal('privacyPolicy');
+            }
+        });
+        
+        // 提交注册
+        function submitRegistration() {
+            // 执行表单验证
+            if(!validateForm()) {
+                // 如果验证失败，在 register.js 中的验证函数会显示具体错误信息
+                const messageBox = document.getElementById('registerMessage');
+                messageBox.innerHTML = '请检查表单中的错误信息！';
+                messageBox.className = 'message-box error';
+                messageBox.style.display = 'block';
+                return;
+            }
+            
+            // 获取主要表单数据
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+            const nickname = document.getElementById('nickname').value;
+            
+            const messageBox = document.getElementById('registerMessage');
+            
+            // 清除之前的消息
+            messageBox.style.display = 'none';
+            messageBox.innerHTML = '';
+            messageBox.className = 'message-box';
+            
+            // 创建FormData对象
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', password);
+            formData.append('email', email);
+            formData.append('phone', phone);
+            formData.append('nickname', nickname);
+            
+            // 使用AJAX发送请求到PHP处理文件
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'register.php', true);
+            
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        
+                        if (response.success) {
+                            // 注册成功
+                            messageBox.innerHTML = '注册成功，正在跳转到登录页...';
+                            messageBox.className = 'message-box success';
+                            messageBox.style.display = 'block';
+                            
+                            // 延迟跳转到登录页
+                            setTimeout(function() {
+                                window.location.href = 'login.html';
+                            }, 2000);
+                        } else {
+                            // 注册失败
+                            messageBox.innerHTML = response.message || '注册失败，请检查表单并重试！';
+                            messageBox.className = 'message-box error';
+                            messageBox.style.display = 'block';
+                        }
+                    } catch (e) {
+                        // JSON解析错误
+                        messageBox.innerHTML = '服务器响应格式错误，请稍后再试！';
+                        messageBox.className = 'message-box error';
+                        messageBox.style.display = 'block';
+                        console.error('JSON解析错误:', e);
+                    }
+                } else {
+                    // HTTP错误
+                    messageBox.innerHTML = '服务器连接错误，请稍后再试！';
+                    messageBox.className = 'message-box error';
+                    messageBox.style.display = 'block';
+                    console.error('HTTP错误:', xhr.status);
+                }
+            };
+            
+            xhr.onerror = function() {
+                messageBox.innerHTML = '网络错误，请检查您的连接！';
+                messageBox.className = 'message-box error';
+                messageBox.style.display = 'block';
+                console.error('网络错误');
+            };
+            
+            xhr.send(formData);
+        }
+    </script>
+</body>
+</html>

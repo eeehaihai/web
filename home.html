@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校园论坛 - 首页</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="common.js" defer></script> <!-- 使用 defer -->
+</head>
+<body>
+    <!-- 头部导航 -->
+    <header>
+        <div class="container header-content">
+            <a href="home.html" class="logo">
+                <h1>校园论坛</h1>
+            </a>
+
+            <div class="user-actions">
+                <!-- 此处会通过JS动态更新用户登录状态 -->
+            </div>
+        </div>
+    </header>
+
+    <!-- 搜索区域 -->
+    <section class="search-section">
+        <div class="container search-container">
+            <h2>探索校园里的奇闻趣事与生活点滴</h2>
+            <div class="search-box">
+                <!-- 新增一个包装器 div -->
+                <div class="search-input-wrapper">
+                    <input type="text" id="searchInput" placeholder="搜索话题、关键词...">
+                    <!-- 将图标放在这里 -->
+                    <span class="search-icon">🔍</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 主要内容区域 -->
+    <div class="container main-content">
+        <!-- 话题列表区域 -->
+        <div class="topic-list">
+            <a href="create-topic.html" class="create-topic-btn">发布新话题</a>
+
+            <div class="topic-filter">
+                <div class="filter-options">
+                    <a href="#" class="active" data-category="all">全部</a>
+                    <a href="#" data-category="campus_life">校园生活</a>
+                    <a href="#" data-category="study">学习交流</a>
+                    <a href="#" data-category="secondhand">二手交易</a>
+                    <a href="#" data-category="lost_found">失物招领</a>
+                </div>
+                <div class="sort-options">
+                    <a href="#" class="active" data-sort="newest">最新</a>
+                    <div class="sort-option-group">
+                        <a href="#" data-sort="hottest" id="hottestSortLink">热门</a>
+                        <div class="hottest-tooltip" id="hottestTooltip">
+                            <a href="#" data-timerange="1w">一星期 <span class="checkmark"></span></a>
+                            <a href="#" data-timerange="1m">一个月 <span class="checkmark"></span></a>
+                            <a href="#" data-timerange="6m">半年内 <span class="checkmark"></span></a>
+                            <a href="#" data-timerange="1y">一年内 <span class="checkmark"></span></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 话题列表 -->
+            <div id="topicListContainer">
+                <!-- 此处将通过JS动态加载话题列表 -->
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+
+        <!-- 侧边栏区域 -->
+        <div class="sidebar">
+            <!-- 热门分类 -->
+            <div class="sidebar-widget">
+                <h3>热门分类 (近7天)</h3>
+                <ul class="category-list" id="categoryCounts">
+                    <!-- 此处将通过JS动态加载分类计数 -->
+                </ul>
+            </div>
+
+            <!-- 用户排行 -->
+            <div class="sidebar-widget">
+                <h3>活跃用户榜 (近7天)</h3>
+                <ul class="category-list" id="activeUsers">
+                    <!-- 此处将通过JS动态加载活跃用户 -->
+                </ul>
+            </div>
+
+            <!-- 新的友情链接和版权信息块 -->
+            <div class="sidebar-widget">
+                <h3>友情链接</h3>
+                <ul class="info-links-list">
+                    <li><a href="https://www.jlu.edu.cn/" target="_blank">吉林大学官网</a></li>
+                    <li><a href="https://jdjyw.jlu.edu.cn/" target="_blank">吉大就业网</a></li>
+                    <li><a href="http://lib.jlu.edu.cn" target="_blank">吉大图书馆</a></li>
+                    <li><a href="https://ehall.jlu.edu.cn/" target="_blank">网上办事大厅</a></li>
+                    <li><a href="contact-team.html">联系团队</a></li>
+                </ul>
+                <div class="widget-copyright-section">
+                    Copyright &copy; 2025 校园论坛 All Rights Reserved. 吉ICP备XXXXXXXX号
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSearchTerm = null; // 全局变量存储当前搜索词
+        let currentCategory = 'all';
+        let currentSortBy = 'newest';
+        let currentTimeRange = '1w';
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 更新导航栏用户状态
+            updateNavUserStatus();
+
+            // 加载并显示话题列表 (默认排序和分类)
+            loadTopics(currentCategory, currentSortBy, currentTimeRange, currentSearchTerm);
+
+            // 获取所有帖子数据一次，然后传递给侧边栏更新函数
+            getAllPosts(function(allPostsData) {
+                if (allPostsData && allPostsData.length > 0) {
+                    updateCategoryCounts(allPostsData);
+                    loadActiveUsers(allPostsData);
+                } else {
+                    // 处理获取数据失败或无数据的情况
+                    document.getElementById('categoryCounts').innerHTML = '<li>无法加载分类</li>';
+                    document.getElementById('activeUsers').innerHTML = '<li>无法加载活跃用户</li>';
+                }
+            });
+
+            // 恢复滚动位置
+            const scrollPosition = sessionStorage.getItem('homeScrollPosition');
+            if (scrollPosition) {
+                window.scrollTo(0, parseInt(scrollPosition, 10));
+                sessionStorage.removeItem('homeScrollPosition'); // 使用后清除
+            }
+
+            // 设置分类筛选点击事件
+            document.querySelectorAll('.filter-options a').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+
+                    document.querySelectorAll('.filter-options a').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    currentCategory = this.getAttribute('data-category');
+                    loadTopics(currentCategory, currentSortBy, currentTimeRange, currentSearchTerm);
+                });
+            });
+
+            // 设置排序点击事件
+            document.querySelectorAll('.sort-options a[data-sort], .sort-options .sort-option-group a[data-sort]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+
+                    const newSortBy = this.getAttribute('data-sort');
+
+                    if (newSortBy === 'hottest') {
+                        const activeTimeRangeLink = document.querySelector('.hottest-tooltip a.selected');
+                        currentTimeRange = activeTimeRangeLink ? activeTimeRangeLink.getAttribute('data-timerange') : '1w';
+                        currentSortBy = 'hottest';
+
+                        document.querySelectorAll('.sort-options > a, .sort-options > .sort-option-group > a').forEach(item => {
+                            item.classList.remove('active');
+                        });
+                        document.getElementById('hottestSortLink').classList.add('active'); // 激活热门主按钮
+
+                        if (!activeTimeRangeLink) { // 默认选中“一星期”
+                             const defaultTimeRangeLink = document.querySelector('.hottest-tooltip a[data-timerange="1w"]');
+                             if (defaultTimeRangeLink) {
+                                 document.querySelectorAll('.hottest-tooltip a .checkmark').forEach(cm => cm.textContent = '');
+                                 defaultTimeRangeLink.querySelector('.checkmark').textContent = '√';
+                                 defaultTimeRangeLink.classList.add('selected');
+                             }
+                        }
+                    } else {
+                        currentSortBy = newSortBy;
+                        // 清除热门时间范围选择
+                        document.querySelectorAll('.hottest-tooltip a').forEach(item => {
+                            item.classList.remove('selected');
+                            item.querySelector('.checkmark').textContent = '';
+                        });
+                        document.querySelectorAll('.sort-options > a, .sort-options > .sort-option-group > a').forEach(item => {
+                            item.classList.remove('active');
+                        });
+                        this.classList.add('active'); // 激活当前排序按钮
+                    }
+                    loadTopics(currentCategory, currentSortBy, currentTimeRange, currentSearchTerm);
+                });
+            });
+
+            // 热门筛选悬浮窗逻辑
+            const hottestSortLink = document.getElementById('hottestSortLink');
+            const hottestTooltip = document.getElementById('hottestTooltip');
+            let tooltipTimeout;
+
+            if (hottestSortLink && hottestTooltip) {
+                hottestSortLink.addEventListener('mouseenter', () => {
+                    clearTimeout(tooltipTimeout);
+                    hottestTooltip.style.display = 'block';
+                });
+
+                hottestSortLink.addEventListener('mouseleave', () => {
+                    tooltipTimeout = setTimeout(() => {
+                        hottestTooltip.style.display = 'none';
+                    }, 200);
+                });
+
+                hottestTooltip.addEventListener('mouseenter', () => {
+                    clearTimeout(tooltipTimeout);
+                });
+
+                hottestTooltip.addEventListener('mouseleave', () => {
+                    tooltipTimeout = setTimeout(() => {
+                        hottestTooltip.style.display = 'none';
+                    }, 200);
+                });
+
+                hottestTooltip.querySelectorAll('a').forEach(timeRangeLink => {
+                    timeRangeLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation(); 
+
+                        currentTimeRange = this.getAttribute('data-timerange');
+                        currentSortBy = 'hottest'; // 确保排序方式为热门
+
+                        document.querySelectorAll('.sort-options > a, .sort-options > .sort-option-group > a').forEach(item => {
+                            item.classList.remove('active');
+                        });
+                        hottestSortLink.classList.add('active');
+
+                        hottestTooltip.querySelectorAll('a').forEach(item => {
+                            item.classList.remove('selected');
+                            item.querySelector('.checkmark').textContent = '';
+                        });
+                        this.classList.add('selected');
+                        this.querySelector('.checkmark').textContent = '√';
+
+                        loadTopics(currentCategory, currentSortBy, currentTimeRange, currentSearchTerm);
+                        hottestTooltip.style.display = 'none';
+                    });
+                });
+            }
+
+            // 添加事件监听器到新的搜索图标和输入框
+            const searchInput = document.getElementById('searchInput');
+            const searchIcon = document.querySelector('.search-icon');
+
+            if (searchIcon) {
+                searchIcon.addEventListener('click', searchPosts);
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener('keypress', function(event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault(); // 阻止默认的表单提交行为
+                        searchPosts();
+                    }
+                });
+            }
+        });
+
+        // 查看话题详情
+        function viewTopic(id) {
+            sessionStorage.setItem('homeScrollPosition', window.scrollY); // 保存滚动位置
+            window.location.href = `topic-detail.html?id=${id}`;
+        }
+
+        // 话题卡片创建函数
+        function createTopicCard(post) {
+            const topicCard = document.createElement('div');
+            topicCard.className = 'topic-card';
+
+            // 使用通用函数截断长文本
+            const contentPreview = truncateText(post.content);
+            const likeButtonClass = post.currentUserLiked ? 'like-btn liked' : 'like-btn';
+
+            // 使用通用函数处理HTML安全
+            topicCard.innerHTML = `
+                <div class="topic-header">
+                    <h3 class="topic-title">${safeHtml(post.title)}</h3>
+                    <span class="topic-category">${safeHtml(post.categoryName)}</span>
+                </div>
+                <div class="topic-meta">
+                    <span class="topic-author">${safeHtml(post.author)}</span>
+                    <span class="topic-time">${formatTime(post.timestamp)}</span>
+                    <span class="topic-views">浏览 ${post.views}</span>
+                    <span class="topic-comments"> 评论 ${post.comments || 0}</span>
+                </div>
+                <div class="topic-content">${safeHtml(contentPreview)}</div>
+                <div class="topic-footer">
+                    <div class="topic-stats">
+                        <span class="${likeButtonClass}" onclick="likeTopicInList('${post.id}', event)">
+                            <span class="like-icon">❤</span> 点赞 <span class="like-count">${post.likes || 0}</span>
+                        </span>
+                        
+                    </div>
+                    <div class="topic-action">
+                        <a href="#" onclick="event.preventDefault(); event.stopPropagation(); viewTopic('${post.id}');">参与讨论</a>
+                    </div>
+                </div>
+            `;
+
+            // 增加点击查看详情功能
+            topicCard.addEventListener('click', function(e) {
+                // 如果点击的是点赞按钮，不要跳转
+                if (e.target.closest('.like-btn')) {
+                    return;
+                }
+                viewTopic(post.id);
+            });
+
+            return topicCard;
+        }
+
+        // 加载话题列表
+        function loadTopics(category = 'all', sortBy = 'newest', timeRange = null, searchTerm = null) {
+            currentCategory = category; // 更新全局状态
+            currentSortBy = sortBy;
+            currentTimeRange = timeRange;
+            // currentSearchTerm is already global
+
+            const topicListContainer = document.getElementById('topicListContainer');
+            const searchResultInfoEl = document.querySelector('.search-result-info');
+            if (searchResultInfoEl) { // 如果存在旧的搜索结果信息，先移除
+                searchResultInfoEl.remove();
+            }
+            topicListContainer.innerHTML = '<div class="loading">加载中...</div>';
+
+            let apiUrl = `topics.php?category=${category}&sortBy=${sortBy}`;
+            if (sortBy === 'hottest' && timeRange) {
+                apiUrl += `&timeRange=${timeRange}`;
+            }
+            if (searchTerm && searchTerm.trim() !== "") {
+                apiUrl += `&searchTerm=${encodeURIComponent(searchTerm.trim())}`;
+            }
+
+            sendAjaxRequest('GET', apiUrl, null,
+                function(response) {
+                    if (response.success) {
+                        const posts = response.topics;
+                        topicListContainer.innerHTML = ''; // 清空加载提示
+
+                        if (searchTerm && searchTerm.trim() !== "") {
+                            const resultInfo = document.createElement('div');
+                            resultInfo.className = 'search-result-info';
+                            resultInfo.innerHTML = `找到 ${posts.length} 个与 "${safeHtml(searchTerm)}" 相关的话题 (在当前分类下)`;
+                            topicListContainer.parentNode.insertBefore(resultInfo, topicListContainer);
+                        }
+
+                        if (posts.length === 0) {
+                            if (!(searchTerm && searchTerm.trim() !== "")) { // 仅当不是搜索结果为空时显示默认提示
+                                topicListContainer.innerHTML = '<div class="no-topics">暂无话题，快来发布第一个话题吧！</div>';
+                            } else if (!document.querySelector('.search-result-info')) { // 确保搜索提示已添加
+                                const resultInfo = document.createElement('div');
+                                resultInfo.className = 'search-result-info';
+                                resultInfo.innerHTML = `没有找到与 "${safeHtml(searchTerm)}" 相关的话题 (在当前分类下)`;
+                                topicListContainer.parentNode.insertBefore(resultInfo, topicListContainer);
+                            }
+                            return;
+                        }
+
+                        posts.forEach(post => {
+                            const topicCard = createTopicCard(post);
+                            topicListContainer.appendChild(topicCard);
+                        });
+                    } else {
+                        topicListContainer.innerHTML = `<div class="no-topics">加载话题失败: ${safeHtml(response.message)}</div>`;
+                    }
+                },
+                function() {
+                    topicListContainer.innerHTML = '<div class="no-topics">服务器连接错误，请稍后再试</div>';
+                }
+            );
+        }
+
+        // 在列表页点赞话题
+        function likeTopicInList(topicId, event) {
+            event.stopPropagation(); // 阻止事件冒泡，避免触发话题卡片的点击事件
+            if (!checkLoginRequired()) return;
+
+            const likeBtn = event.currentTarget;
+            const likeCountEl = likeBtn.querySelector('.like-count');
+
+            // 使用通用AJAX请求函数
+            sendAjaxRequest('POST', 'like_topic.php', { topicId: topicId },
+                function(response) {
+                    if (response.success) {
+                        // 更新显示的点赞数
+                        likeCountEl.textContent = response.likes;
+                        // 更新按钮样式
+                        if (response.isLikedByCurrentUser) {
+                            likeBtn.classList.add('liked');
+                        } else {
+                            likeBtn.classList.remove('liked');
+                        }
+                    } else {
+                        console.error('点赞/取消点赞失败:', response.message);
+                        alert(response.message || '操作失败，请稍后再试');
+                    }
+                },
+                function() {
+                    console.error('点赞/取消点赞请求失败');
+                    alert('网络错误，请稍后再试');
+                }
+            );
+        }
+
+        // 更新分类统计 (近7天)
+        function updateCategoryCounts(allPostsData) {
+            const categoryCountsEl = document.getElementById('categoryCounts');
+            categoryCountsEl.innerHTML = ''; // 清空现有列表
+
+            const sevenDaysAgo = new Date().getTime() - 7 * 24 * 60 * 60 * 1000;
+            const recentPosts = allPostsData.filter(post => post.timestamp >= sevenDaysAgo);
+
+            const categoryCounts = {};
+            recentPosts.forEach(post => {
+                if (post.category) {
+                    categoryCounts[post.category] = (categoryCounts[post.category] || 0) + 1;
+                }
+            });
+
+            const categoryNames = getCategoryListFromJS(); 
+
+            const sortedCategories = Object.entries(categoryCounts)
+                .sort(([, countA], [, countB]) => countB - countA)
+                .map(([categoryKey]) => categoryKey);
+
+            if (sortedCategories.length === 0) {
+                categoryCountsEl.innerHTML = '<li>暂无分类数据</li>';
+                return;
+            }
+            
+            sortedCategories.forEach(categoryKey => {
+                const categoryName = categoryNames[categoryKey] || categoryKey;
+                const count = categoryCounts[categoryKey];
+                const li = document.createElement('li');
+                li.innerHTML = `<a href="#" data-category="${categoryKey}">${safeHtml(categoryName)} <span class="category-count">${count}</span></a>`;
+                li.querySelector('a').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    document.querySelectorAll('.filter-options a').forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('data-category') === categoryKey) {
+                            link.classList.add('active');
+                        }
+                    });
+                    loadTopics(categoryKey);
+                });
+                categoryCountsEl.appendChild(li);
+            });
+        }
+
+        // 加载活跃用户 (近7天，最多10个)
+        function loadActiveUsers(allPostsData) {
+            const activeUsersEl = document.getElementById('activeUsers');
+            activeUsersEl.innerHTML = ''; // 清空现有列表
+
+            const sevenDaysAgo = new Date().getTime() - 7 * 24 * 60 * 60 * 1000;
+            const recentPosts = allPostsData.filter(post => post.timestamp >= sevenDaysAgo);
+
+            const userPostCounts = {};
+            recentPosts.forEach(post => {
+                if (post.author && post.author !== '匿名用户') {
+                    userPostCounts[post.author] = (userPostCounts[post.author] || 0) + 1;
+                }
+            });
+
+            const sortedUsers = Object.entries(userPostCounts)
+                .sort(([, countA], [, countB]) => countB - countA)
+                .slice(0, 10); // 最多10个用户
+
+            if (sortedUsers.length === 0) {
+                activeUsersEl.innerHTML = '<li>暂无活跃用户</li>';
+                return;
+            }
+
+            sortedUsers.forEach(([username, postCount]) => {
+                const li = document.createElement('li');
+                li.innerHTML = `<a href="#">${safeHtml(username)} <span class="category-count">${postCount}</span></a>`;
+                activeUsersEl.appendChild(li);
+            });
+        }
+
+        // 搜索帖子
+        function searchPosts() {
+            const searchTermInput = document.getElementById('searchInput').value;
+            currentSearchTerm = searchTermInput.trim(); // 更新全局搜索词
+
+            // 如果搜索词为空，则加载当前分类和排序的全部内容
+            if (currentSearchTerm === "") {
+                const searchResultInfoEl = document.querySelector('.search-result-info');
+                if (searchResultInfoEl) {
+                    searchResultInfoEl.remove();
+                }
+            }
+            // 调用 loadTopics，它会使用全局的 currentCategory, currentSortBy, currentTimeRange 和新的 currentSearchTerm
+            loadTopics(currentCategory, currentSortBy, currentTimeRange, currentSearchTerm);
+        }
+
+        // 获取分类列表的辅助函数
+        function getCategoryListFromJS() {
+            return {
+                'campus_life': '校园生活',
+                'study': '学习交流',
+                'secondhand': '二手交易',
+                'lost_found': '失物招领'
+            };
+        }
+    </script>
+</body>
+</html>
