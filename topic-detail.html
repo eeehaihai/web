@@ -106,6 +106,8 @@
         <input type="hidden" id="inlineParentCommentId">
         <input type="hidden" id="inlineReplyToFloor">
         <input type="hidden" id="inlineReplyToAuthor">
+        <input type="hidden" id="inlineReplyToAuthorId"> <!-- 新增 -->
+        <input type="hidden" id="inlineReplyTargetCommentId"> <!-- 新增 -->
         <textarea id="inlineReplyContent" placeholder="添加回复..." rows="2"></textarea>
         <div class="inline-reply-actions">
             <button type="button" class="inline-reply-submit-btn" onclick="submitInlineReply()">回复</button>
@@ -378,7 +380,7 @@
                             <button class="${commentLikeButtonClass}" onclick="likeComment('${topicId}', '${comment.id}', event)">
                                 <span class="like-icon">👍</span> <span class="like-count-text">${comment.likes || 0}</span>
                             </button>
-                            <button class="comment-reply-btn" onclick="openInlineReplyBox('${comment.id}', '${comment.floor}', '${safeHtml(comment.author)}', this)">
+                            <button class="comment-reply-btn" onclick="openInlineReplyBox('${comment.id}', '${comment.floor}', '${safeHtml(comment.author)}', this, '${comment.id}', '${comment.author_user_id}')">
                                 <span class="reply-icon">💬</span> 回复
                             </button>
                         </div>
@@ -423,7 +425,8 @@
 
         // 显示楼中楼回复的特定页面
         function displayRepliesPage(commentId, topicId, page) {
-            const mainCommentData = currentTopicCommentsData.find(c => c.id === commentId);
+            // Ensure commentId is treated as a number for comparison if c.id is a number
+            const mainCommentData = currentTopicCommentsData.find(c => c.id === parseInt(commentId)); 
             if (!mainCommentData || !mainCommentData.replies) return;
 
             const allReplies = mainCommentData.replies;
@@ -470,7 +473,7 @@
                         <button class="${replyLikeButtonClass}" onclick="likeComment('${topicId}', '${reply.id}', event)">
                             <span class="like-icon">👍</span> <span class="like-count-text">${reply.likes || 0}</span>
                         </button>
-                        <button class="comment-reply-btn" onclick="openInlineReplyBox('${commentId}', '${mainCommentData.floor}', '${safeHtml(reply.author)}', this)">
+                        <button class="comment-reply-btn" onclick="openInlineReplyBox('${commentId}', '${mainCommentData.floor}', '${safeHtml(reply.author)}', this, '${reply.id}', '${reply.author_user_id}')">
                             <span class="reply-icon">💬</span> 回复
                         </button>
                     </div>
@@ -552,19 +555,24 @@
         }
 
         // 打开内联回复框 (用于回复评论/楼中楼)
-        function openInlineReplyBox(parentCommentId, floor, author, buttonElement) {
+        function openInlineReplyBox(parentCommentId, floor, author, buttonElement, replyTargetCommentId, replyTargetUserId) {
             if (!checkLoginRequired()) return;
 
             closeInlineReplyBox(); // 先关闭任何已存在的内联框
 
             activeInlineReplyButton = buttonElement;
             const inlineReplyBox = document.getElementById('inlineReplyBox');
-            document.getElementById('inlineParentCommentId').value = parentCommentId;
-            document.getElementById('inlineReplyToFloor').value = floor;
-            document.getElementById('inlineReplyToAuthor').value = author;
+            document.getElementById('inlineParentCommentId').value = parentCommentId; // 这是主评论的ID
+            document.getElementById('inlineReplyToFloor').value = floor; // 这是被回复目标的楼层 (可能是主评论的楼层)
+            document.getElementById('inlineReplyToAuthor').value = author; // 这是被回复目标的作者昵称
+            document.getElementById('inlineReplyTargetCommentId').value = replyTargetCommentId; // 这是被直接回复的评论/回复的ID
+            document.getElementById('inlineReplyToAuthorId').value = replyTargetUserId; // 这是被直接回复的评论/回复的作者的User ID
             
             const inlineContent = document.getElementById('inlineReplyContent');
-            inlineContent.placeholder = `回复 ${floor}楼 @${author}...`;
+            // 更新placeholder以反映回复的是谁
+            const targetAuthorDisplay = author || '该用户';
+            const targetFloorDisplay = floor ? `${floor}楼 ` : '';
+            inlineContent.placeholder = `回复 ${targetFloorDisplay}@${targetAuthorDisplay}...`;
             inlineContent.value = ''; // 清空先前内容
 
             // 定位内联回复框
@@ -648,13 +656,16 @@
             
             showMessageElement(messageEl, '', 'none'); // 清除先前的消息
 
+            const replyTargetCommentId = document.getElementById('inlineReplyTargetCommentId').value; // 修正：使用正确的ID获取目标评论ID
+            const replyTargetUserId = document.getElementById('inlineReplyToAuthorId').value; 
+
             const formData = new FormData();
             formData.append('topicId', topicId);
             formData.append('content', content);
-            formData.append('parentCommentId', parentCommentId);
-            formData.append('replyToFloor', replyToFloor);
-            formData.append('replyToAuthor', replyToAuthor);
-            formData.append('anonymous', '0'); // 内联回复默认不匿名，无UI选项
+            formData.append('parentCommentId', parentCommentId); // 主评论ID
+            formData.append('replyTargetCommentId', replyTargetCommentId); // 目标评论ID
+            formData.append('replyTargetUserId', replyTargetUserId); // 目标用户ID
+            formData.append('anonymous', '0');
 
             sendAjaxRequest('POST', 'comments.php', formData,
                 function(response) {

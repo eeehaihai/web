@@ -2,127 +2,127 @@
 // 开启会话
 session_start();
 
-// 引入工具函数
+// 引入工具函数和数据库连接
 require_once 'utils.php';
+global $pdo;
 
 // 检查用户是否已登录
-if (!isUserLoggedIn()) {
-    jsonResponse([
-        'success' => false,
-        'message' => '请先登录'
-    ]);
+$currentUserId = getCurrentUserId();
+if (!$currentUserId) {
+    jsonResponse(['success' => false, 'message' => '请先登录']);
 }
 
 // 检查是否为POST请求
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    jsonResponse([
-        'success' => false,
-        'message' => '请求方法不允许'
-    ]);
+    jsonResponse(['success' => false, 'message' => '请求方法不允许']);
 }
 
 // 获取帖子ID
-$topicId = isset($_POST['topicId']) ? $_POST['topicId'] : '';
+$topicId = isset($_POST['topicId']) ? (int)$_POST['topicId'] : 0;
 
 if (empty($topicId)) {
-    jsonResponse([
-        'success' => false,
-        'message' => '帖子ID不能为空'
-    ]);
+    jsonResponse(['success' => false, 'message' => '帖子ID不能为空']);
 }
 
-// 当前登录用户
-$currentUser = getCurrentUser();
+try {
+    $pdo->beginTransaction();
 
-// 话题数据文件
-$topicsFile = 'topics.json';
-// 统一的评论数据文件
-$commentsFile = 'comments.json';
+    // 查找话题并检查权限
+    $stmtTopic = $pdo->prepare("SELECT user_id FROM topics WHERE id = ?");
+    $stmtTopic->execute([$topicId]);
+    $topic = $stmtTopic->fetch();
 
-// 读取话题数据
-$topics = readJsonFile($topicsFile, []); // 提供默认空数组
-if (empty($topics) && !is_array($topics)) { // 确保即使文件存在但内容无效时，$topics也是数组
-    $topics = [];
-}
+    if (!$topic) {
+        $pdo->rollBack();
+        jsonResponse(['success' => false, 'message' => '帖子不存在']);
+    }
 
+    if (!userCanModifyTopic($topic['user_id'], $currentUserId)) {
+        $pdo->rollBack();
+        jsonResponse(['success' => false, 'message' => '您没有权限删除此帖子']);
+    }
 
-// 查找话题
-$topicIndex = -1;
-$topicToDelete = null;
-foreach ($topics as $index => $topic) {
-    if ($topic['id'] === $topicId) {
-        $topicIndex = $index;
-        $topicToDelete = $topic;
-        
-        // 检查用户权限
-        if (!userCanModifyTopic($topic, $currentUser)) {
-            jsonResponse([
-                'success' => false,
-                'message' => '您没有权限删除此帖子'
-            ]);
+    // 1. 删除与话题关联的图片记录和文件 (entity_type = 'topic')
+    $stmtImagesTopic = $pdo->prepare("SELECT id, path FROM images WHERE related_id = ? AND entity_type = 'topic'");
+    $stmtImagesTopic->execute([$topicId]);
+    $topicImages = $stmtImagesTopic->fetchAll();
+    foreach ($topicImages as $image) {
+        if (file_exists($image['path'])) {
+            unlink($image['path']);
         }
-        break;
+        // 可以考虑删除包含图片的目录，如果目录为空
     }
-}
-
-// 如果找不到帖子
-if ($topicIndex === -1) {
-    jsonResponse([
-        'success' => false,
-        'message' => '帖子不存在'
-    ]);
-}
-
-// 删除帖子
-array_splice($topics, $topicIndex, 1);
-
-// 保存更新后的话题数据
-if (saveJsonFile($topicsFile, $topics)) {
-    // 从 comments.json 中删除与此话题相关的评论
-    $allComments = readJsonFile($commentsFile, []);
-    if (isset($allComments[$topicId])) {
-        unset($allComments[$topicId]);
-        saveJsonFile($commentsFile, $allComments); // 保存更新后的评论数据
-    }
+    $stmtDeleteImagesTopic = $pdo->prepare("DELETE FROM images WHERE related_id = ? AND entity_type = 'topic'");
+    $stmtDeleteImagesTopic->execute([$topicId]);
     
-    // 简单的递归删除目录函数
-    function deleteDirectory($dir) {
-        if (!file_exists($dir)) {
-            return true;
-        }
-        if (!is_dir($dir)) {
-            return unlink($dir);
-        }
-        foreach (scandir($dir) as $item) {
-            if ($item == '.' || $item == '..') {
-                continue;
-            }
-            if (!deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) {
-                return false;
-            }
-        }
-        return rmdir($dir);
-    }
-
-    // 删除话题相关的图片目录 (如果存在)
+    // 删除话题图片目录 (如果存在且为空)
     $topicImageDir = 'uploads/topics/' . $topicId . '/';
     if (is_dir($topicImageDir)) {
-        deleteDirectory($topicImageDir);
-    }
-    // 删除评论相关的图片目录 (如果存在)
-    // 评论图片现在存储在 uploads/comments/topicId/commentId/ 结构下
-    // 或者 uploads/comments/topicId/parentCommentId/replyId/
-    // 这里需要更复杂的逻辑来删除所有相关的评论图片目录，或者在创建评论时就规划好目录结构以便于删除
-    // 为简化，此处仅删除 uploads/comments/topicId/ 顶级目录，这可能不完全精确如果评论图片分散存储
-    $commentImageBaseDir = 'uploads/comments/' . $topicId . '/';
-     if (is_dir($commentImageBaseDir)) {
-        deleteDirectory($commentImageBaseDir);
+        // 简单的递归删除目录函数 (如果需要，可以移到 utils.php)
+        function deleteDirectoryRecursive($dir) {
+            if (!file_exists($dir)) return true;
+            if (!is_dir($dir)) return unlink($dir);
+            foreach (scandir($dir) as $item) {
+                if ($item == '.' || $item == '..') continue;
+                if (!deleteDirectoryRecursive($dir . DIRECTORY_SEPARATOR . $item)) return false;
+            }
+            return rmdir($dir);
+        }
+        deleteDirectoryRecursive($topicImageDir);
     }
 
-    jsonResponse([
-        'success' => true,
-        'message' => '帖子删除成功'
-    ]);
+
+    // 2. 删除与话题下评论关联的图片记录和文件 (entity_type = 'comment')
+    // 首先获取该话题下的所有评论ID
+    $stmtCommentIds = $pdo->prepare("SELECT id FROM comments WHERE topic_id = ?");
+    $stmtCommentIds->execute([$topicId]);
+    $commentIds = $stmtCommentIds->fetchAll(PDO::FETCH_COLUMN);
+
+    if (!empty($commentIds)) {
+        $placeholders = implode(',', array_fill(0, count($commentIds), '?'));
+        $stmtImagesComment = $pdo->prepare("SELECT id, path FROM images WHERE related_id IN ($placeholders) AND entity_type = 'comment'");
+        $stmtImagesComment->execute($commentIds);
+        $commentImages = $stmtImagesComment->fetchAll();
+        foreach ($commentImages as $image) {
+            if (file_exists($image['path'])) {
+                unlink($image['path']);
+            }
+            // 删除评论图片目录 (如果存在且为空)
+            // 路径可能是 uploads/comments/comment_id/ 或 uploads/comments/topic_id/comment_id
+            // 根据 handleFileUploads 中的目录结构来删除
+            $commentImageDir = dirname($image['path']); // 获取图片所在目录
+             if (is_dir($commentImageDir)) {
+                // 检查目录是否为空
+                $isEmpty = count(array_diff(scandir($commentImageDir), ['.', '..'])) === 0;
+                if ($isEmpty) {
+                    rmdir($commentImageDir);
+                }
+            }
+        }
+        $stmtDeleteImagesComment = $pdo->prepare("DELETE FROM images WHERE related_id IN ($placeholders) AND entity_type = 'comment'");
+        $stmtDeleteImagesComment->execute($commentIds);
+    }
+     // 删除话题下所有评论的图片目录 (更粗略的方式，如果评论图片都存在于 uploads/comments/topicId/ 下)
+    $commentsImageBaseDir = 'uploads/comments/' . $topicId . '/';
+    if (is_dir($commentsImageBaseDir) && isset($deleteDirectoryRecursive)) { // 确保函数已定义
+        $deleteDirectoryRecursive($commentsImageBaseDir);
+    }
+
+
+    // 3. 删除话题 (由于ON DELETE CASCADE, topic_tags, topic_likes, comments, comment_likes 会被自动删除)
+    $stmtDeleteTopic = $pdo->prepare("DELETE FROM topics WHERE id = ?");
+    $stmtDeleteTopic->execute([$topicId]);
+
+    $pdo->commit();
+    jsonResponse(['success' => true, 'message' => '帖子及相关数据删除成功']);
+
+} catch (PDOException $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    jsonResponse(['success' => false, 'message' => '删除失败: ' . $e->getMessage()]);
+}
+?>
 } else {
     jsonResponse([
         'success' => false,

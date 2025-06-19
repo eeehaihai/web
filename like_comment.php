@@ -1,6 +1,8 @@
 <?php
 session_start();
+// 引入工具函数和数据库连接
 require_once 'utils.php';
+global $pdo;
 
 // 检查请求方法
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -8,66 +10,64 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // 检查用户是否登录
-if (!isUserLoggedIn()) {
+$currentUserId = getCurrentUserId();
+if (!$currentUserId) {
     jsonResponse(['success' => false, 'message' => '请先登录']);
 }
 
-$topicId = isset($_POST['topicId']) ? $_POST['topicId'] : '';
-$commentId = isset($_POST['commentId']) ? $_POST['commentId'] : '';
-$currentUser = getCurrentUser();
+$topicId = isset($_POST['topicId']) ? (int)$_POST['topicId'] : 0; // topicId 在此场景下可能不是必需的，除非用于验证评论确实属于该话题
+$commentId = isset($_POST['commentId']) ? (int)$_POST['commentId'] : 0;
 
-if (empty($topicId) || empty($commentId)) {
-    jsonResponse(['success' => false, 'message' => '话题ID和评论ID不能为空']);
+if (empty($commentId)) {
+    jsonResponse(['success' => false, 'message' => '评论ID不能为空']);
 }
 
-$commentsFile = 'comments.json';
-$allComments = readJsonFile($commentsFile, []);
+try {
+    // 检查评论是否存在
+    $stmtCheckComment = $pdo->prepare("SELECT id FROM comments WHERE id = ?");
+    // 如果需要，可以加入 topic_id 的验证: "SELECT id FROM comments WHERE id = ? AND topic_id = ?"
+    // $stmtCheckComment->execute([$commentId, $topicId]);
+    $stmtCheckComment->execute([$commentId]);
+    if (!$stmtCheckComment->fetch()) {
+        jsonResponse(['success' => false, 'message' => '评论不存在']);
+    }
 
-$commentFound = false;
-$newLikesCount = 0;
-$currentUserLiked = false;
+    // 检查用户是否已点赞该评论
+    $stmtCheck = $pdo->prepare("SELECT * FROM comment_likes WHERE user_id = ? AND comment_id = ?");
+    $stmtCheck->execute([$currentUserId, $commentId]);
+    $existingLike = $stmtCheck->fetch();
 
-if (isset($allComments[$topicId])) {
-    foreach ($allComments[$topicId] as &$mainComment) {
-        if ($mainComment['id'] === $commentId) {
-            $commentFound = true;
-            if (!isset($mainComment['likedBy']) || !is_array($mainComment['likedBy'])) {
-                $mainComment['likedBy'] = [];
-            }
-            $userIndex = array_search($currentUser, $mainComment['likedBy']);
-            if ($userIndex !== false) {
-                array_splice($mainComment['likedBy'], $userIndex, 1); // 取消点赞
-                $currentUserLiked = false;
-            } else {
-                $mainComment['likedBy'][] = $currentUser; // 点赞
-                $currentUserLiked = true;
-            }
-            $newLikesCount = count($mainComment['likedBy']);
-            // $mainComment['likes'] = $newLikesCount; // 可选：更新直接的点赞计数字段
-            break;
-        }
-        if (isset($mainComment['replies']) && is_array($mainComment['replies'])) {
-            foreach ($mainComment['replies'] as &$reply) {
-                if ($reply['id'] === $commentId) {
-                    $commentFound = true;
-                    if (!isset($reply['likedBy']) || !is_array($reply['likedBy'])) {
-                        $reply['likedBy'] = [];
-                    }
-                    $userIndex = array_search($currentUser, $reply['likedBy']);
-                    if ($userIndex !== false) {
-                        array_splice($reply['likedBy'], $userIndex, 1); // 取消点赞
-                        $currentUserLiked = false;
-                    } else {
-                        $reply['likedBy'][] = $currentUser; // 点赞
-                        $currentUserLiked = true;
-                    }
-                    $newLikesCount = count($reply['likedBy']);
-                    // $reply['likes'] = $newLikesCount; // 可选
-                    break 2; // 跳出两层循环
-                }
-            }
-            unset($reply); // 解除引用
-        }
+    $currentUserLiked = false;
+    if ($existingLike) {
+        // 已点赞，取消点赞
+        $stmtDelete = $pdo->prepare("DELETE FROM comment_likes WHERE user_id = ? AND comment_id = ?");
+        $stmtDelete->execute([$currentUserId, $commentId]);
+        $message = '取消点赞成功';
+        $currentUserLiked = false;
+    } else {
+        // 未点赞，进行点赞
+        $stmtInsert = $pdo->prepare("INSERT INTO comment_likes (user_id, comment_id) VALUES (?, ?)");
+        $stmtInsert->execute([$currentUserId, $commentId]);
+        $message = '点赞成功';
+        $currentUserLiked = true;
+    }
+
+    // 获取评论最新的点赞数
+    $stmtCount = $pdo->prepare("SELECT COUNT(*) as like_count FROM comment_likes WHERE comment_id = ?");
+    $stmtCount->execute([$commentId]);
+    $newLikesCount = $stmtCount->fetchColumn();
+
+    jsonResponse([
+        'success' => true,
+        'message' => $message,
+        'likes' => (int)$newLikesCount,
+        'isLikedByCurrentUser' => $currentUserLiked
+    ]);
+
+} catch (PDOException $e) {
+    jsonResponse(['success' => false, 'message' => '操作失败: ' . $e->getMessage()]);
+}
+?>
     }
     unset($mainComment); // 解除引用
 }

@@ -6,7 +6,7 @@ CREATE TABLE `users` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `username` VARCHAR(50) NOT NULL UNIQUE,
   `nickname` VARCHAR(50) NOT NULL,
-  `password` VARCHAR(255) NOT NULL, -- 注意：实际存储时应使用哈希加密（如 aash_password()）
+  `password` VARCHAR(255) NOT NULL, -- 注意：实际存储时应使用哈希加密（如 password_hash()）
   `email` VARCHAR(100) NOT NULL UNIQUE,
   `phone` VARCHAR(20) DEFAULT NULL UNIQUE,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -24,6 +24,7 @@ CREATE TABLE `topics` (
   `category` ENUM('campus_life', 'study', 'secondhand', 'lost_found') NOT NULL,
   `is_anonymous` BOOLEAN NOT NULL DEFAULT FALSE,
   `views` INT UNSIGNED NOT NULL DEFAULT 0,
+  `comments_count` INT UNSIGNED NOT NULL DEFAULT 0, -- 新增：评论计数
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE -- 用户注销后，其发布的话题也一并删除
@@ -42,9 +43,13 @@ CREATE TABLE `comments` (
   `is_anonymous` BOOLEAN NOT NULL DEFAULT FALSE,
   `floor` INT UNSIGNED DEFAULT NULL, -- 仅主评论有楼层号
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `reply_target_comment_id` INT UNSIGNED DEFAULT NULL,
+  `reply_target_user_id` INT UNSIGNED DEFAULT NULL,
   FOREIGN KEY (`topic_id`) REFERENCES `topics`(`id`) ON DELETE CASCADE, -- 话题删除时，相关评论也删除
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE, -- 用户注销时，相关评论也删除
-  FOREIGN KEY (`parent_comment_id`) REFERENCES `comments`(`id`) ON DELETE CASCADE -- 父评论删除时，子回复也删除
+  FOREIGN KEY (`parent_comment_id`) REFERENCES `comments`(`id`) ON DELETE CASCADE, -- 父评论删除时，子回复也删除
+  FOREIGN KEY (`reply_target_comment_id`) REFERENCES `comments`(`id`) ON DELETE SET NULL,
+  FOREIGN KEY (`reply_target_user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------

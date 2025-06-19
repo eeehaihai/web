@@ -5,223 +5,223 @@ session_start();
 // 设置响应类型为JSON
 header('Content-Type: application/json');
 
-// 引入工具函数
-require_once 'utils.php';
+// 引入工具函数和数据库连接
+require_once 'utils.php'; // utils.php 现在也 require 'db.php'
+global $pdo;
 
-// 话题数据文件
-$topicsFile = 'topics.json';
-$currentUser = getCurrentUser(); // 获取当前用户以便判断点赞状态
+$currentUser = getCurrentUser(); // 获取当前登录用户名
+$currentUserId = getCurrentUserId(); // 获取当前登录用户ID
 
 // 创建话题
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // 检查用户是否登录
-    if (!isUserLoggedIn()) {
-        jsonResponse([
-            'success' => false,
-            'message' => '请先登录'
-        ]);
+    if (!isUserLoggedIn() || !$currentUserId) {
+        jsonResponse(['success' => false, 'message' => '请先登录']);
     }
     
-    // 获取话题数据
-    $title = isset($_POST['title']) ? $_POST['title'] : '';
+    $title = isset($_POST['title']) ? trim($_POST['title']) : '';
     $category = isset($_POST['category']) ? $_POST['category'] : '';
-    $content = isset($_POST['content']) ? $_POST['content'] : '';
-    $tags = isset($_POST['tags']) ? explode(',', $_POST['tags']) : [];
-    $anonymous = isset($_POST['anonymous']) ? (bool)$_POST['anonymous'] : false;
-    
-    // 简单验证
-    if (empty($title) || empty($category) || empty($content)) {
-        jsonResponse([
-            'success' => false,
-            'message' => '标题、分类和内容不能为空'
-        ]);
-    }
-    
-    // 处理标签
-    $cleanTags = [];
-    foreach ($tags as $tag) {
-        $tag = trim($tag);
-        if (!empty($tag)) {
-            $cleanTags[] = $tag;
-        }
-    }
-    
-    // 创建话题对象
-    $topicId = uniqid(); // 首先生成ID，以便用于图片存储路径
-    $uploadedImages = handleFileUploads('images', 'topic', $topicId);
+    $content = isset($_POST['content']) ? trim($_POST['content']) : '';
+    $tagsInput = isset($_POST['tags']) ? explode(',', $_POST['tags']) : [];
+    $is_anonymous = isset($_POST['anonymous']) && $_POST['anonymous'] == '1' ? 1 : 0;
 
-    $topic = [
-        'id' => $topicId,
-        'title' => $title,
-        'category' => $category,
-        'categoryName' => getCategoryName($category),
-        'content' => $content,
-        'tags' => $cleanTags,
-        'images' => $uploadedImages, // 添加图片路径
-        'anonymous' => $anonymous,
-        'author' => $anonymous ? '匿名用户' : $currentUser,
-        'timestamp' => time() * 1000, // JavaScript时间戳格式
-        'views' => 0,
-        'likedBy' => [], // 新增：初始化点赞用户列表
-        'comments' => 0
-    ];
-    
-    // 读取话题文件
-    $topics = readJsonFile($topicsFile, []);
-    
-    // 添加新话题
-    $topics[] = $topic;
-    
-    // 保存到文件
-    $result = saveJsonFile($topicsFile, $topics);
-    if ($result !== false) {
+    if (empty($title) || empty($category) || empty($content)) {
+        jsonResponse(['success' => false, 'message' => '标题、分类和内容不能为空']);
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $stmt = $pdo->prepare("INSERT INTO topics (user_id, title, content, category, is_anonymous) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$currentUserId, $title, $content, $category, $is_anonymous]);
+        $topicId = $pdo->lastInsertId();
+
+        // 处理标签
+        $cleanTags = [];
+        foreach ($tagsInput as $tag) {
+            $tagName = trim($tag);
+            if (!empty($tagName)) {
+                // 检查标签是否存在，不存在则插入
+                $stmtTag = $pdo->prepare("SELECT id FROM tags WHERE name = ?");
+                $stmtTag->execute([$tagName]);
+                $tagRow = $stmtTag->fetch();
+                if ($tagRow) {
+                    $tagId = $tagRow['id'];
+                } else {
+                    $stmtInsertTag = $pdo->prepare("INSERT INTO tags (name) VALUES (?)");
+                    $stmtInsertTag->execute([$tagName]);
+                    $tagId = $pdo->lastInsertId();
+                }
+                // 关联话题与标签
+                $stmtTopicTag = $pdo->prepare("INSERT INTO topic_tags (topic_id, tag_id) VALUES (?, ?)");
+                $stmtTopicTag->execute([$topicId, $tagId]);
+                $cleanTags[] = $tagName; // 用于响应
+            }
+        }
+        
+        // 处理图片上传，现在 handleFileUploads 会将图片信息存入数据库
+        // entityType 为 'topic'
+        $uploadedImages = handleFileUploads('images', 'topic', $topicId, 'topic');
+
+        $pdo->commit();
+        
         jsonResponse([
             'success' => true,
             'message' => '话题发布成功',
-            'topicId' => $topic['id']
+            'topicId' => $topicId,
+            // 可以选择返回完整的话题数据，但通常ID就够了，前端可以重新请求详情
         ]);
-    } else {
-        // 使用新的工具函数获取详细错误信息
-        $errorMsg = getDetailedSaveError($topicsFile, '话题发布失败，无法保存数据');
-        jsonResponse([
-            'success' => false,
-            'message' => $errorMsg
-        ]);
+
+    } catch (PDOException $e) {
+        $pdo->rollBack();
+        jsonResponse(['success' => false, 'message' => '话题发布失败: ' . $e->getMessage()]);
     }
-} 
+}
 // 获取话题列表
 else if ($_SERVER['REQUEST_METHOD'] === 'GET' && !isset($_GET['id'])) {
-    $category = isset($_GET['category']) ? $_GET['category'] : 'all';
+    $categoryFilter = isset($_GET['category']) ? $_GET['category'] : 'all';
     $sortBy = isset($_GET['sortBy']) ? $_GET['sortBy'] : 'newest';
-    $timeRange = isset($_GET['timeRange']) ? $_GET['timeRange'] : '1w'; // 默认一周
-    $searchTerm = isset($_GET['searchTerm']) ? strtolower(trim($_GET['searchTerm'])) : null;
+    $timeRange = isset($_GET['timeRange']) ? $_GET['timeRange'] : '1w';
+    $searchTerm = isset($_GET['searchTerm']) ? trim($_GET['searchTerm']) : null;
+
+    $sql = "SELECT t.id, t.user_id, t.title, t.content, t.category, t.is_anonymous, t.views, t.comments_count, t.created_at, t.updated_at, 
+                   IF(t.is_anonymous, '匿名用户', u.nickname) as author_nickname,
+                   (SELECT COUNT(*) FROM topic_likes tl WHERE tl.topic_id = t.id) as likes_count";
+    if ($currentUserId) {
+        $sql .= ", (SELECT COUNT(*) FROM topic_likes tl WHERE tl.topic_id = t.id AND tl.user_id = :currentUserId) > 0 as currentUserLiked";
+    } else {
+        $sql .= ", 0 as currentUserLiked"; // 未登录用户默认未点赞
+    }
+    $sql .= " FROM topics t JOIN users u ON t.user_id = u.id";
     
-    // 读取话题文件
-    $topics = readJsonFile($topicsFile, []);
-    
-    // 按分类筛选
-    if ($category !== 'all') {
-        $filteredTopics = [];
-        foreach ($topics as $topic) {
-            if ($topic['category'] === $category) {
-                $filteredTopics[] = $topic;
-            }
-        }
-        $topics = $filteredTopics;
+    $whereClauses = [];
+    $params = [];
+
+    if ($currentUserId) {
+        $params[':currentUserId'] = $currentUserId;
     }
 
-    // 如果有搜索词，则进一步筛选
-    if ($searchTerm !== null && $searchTerm !== '') {
-        $searchedTopics = [];
-        foreach ($topics as $topic) {
-            $titleMatch = stripos($topic['title'], $searchTerm) !== false;
-            $contentMatch = stripos($topic['content'], $searchTerm) !== false;
-            $tagsMatch = false;
-            if (isset($topic['tags']) && is_array($topic['tags'])) {
-                foreach ($topic['tags'] as $tag) {
-                    if (stripos($tag, $searchTerm) !== false) {
-                        $tagsMatch = true;
-                        break;
-                    }
-                }
-            }
-            if ($titleMatch || $contentMatch || $tagsMatch) {
-                $searchedTopics[] = $topic;
-            }
-        }
-        $topics = $searchedTopics;
+    if ($categoryFilter !== 'all') {
+        $whereClauses[] = "t.category = :category";
+        $params[':category'] = $categoryFilter;
     }
 
-    // 添加点赞数和当前用户点赞状态
-    foreach ($topics as &$topic) {
-        $topic['likes'] = isset($topic['likedBy']) ? count($topic['likedBy']) : 0;
-        $topic['currentUserLiked'] = $currentUser && isset($topic['likedBy']) ? in_array($currentUser, $topic['likedBy']) : false;
+    if ($searchTerm) {
+        $whereClauses[] = "(t.title LIKE :searchTerm OR t.content LIKE :searchTerm OR EXISTS (SELECT 1 FROM topic_tags tt JOIN tags ta ON tt.tag_id = ta.id WHERE tt.topic_id = t.id AND ta.name LIKE :searchTermTag))";
+        $params[':searchTerm'] = "%$searchTerm%";
+        $params[':searchTermTag'] = "%$searchTerm%";
     }
-    unset($topic); // 解除引用
     
-    // 按要求排序
-    if ($sortBy === 'newest') {
-        // 按发布时间降序排序
-        usort($topics, function($a, $b) {
-            return $b['timestamp'] - $a['timestamp'];
-        });
-    } else if ($sortBy === 'hottest') {
-        // 计算一周内的热度
-        $now = time();
-        $timeAgo = $now;
-
+    if ($sortBy === 'hottest') {
+        $timeCondition = "t.created_at >= DATE_SUB(NOW(), INTERVAL ";
         switch ($timeRange) {
-            case '1m': // 一月
-                $timeAgo = $now - (30 * 24 * 60 * 60);
-                break;
-            case '6m': // 半年
-                $timeAgo = $now - (6 * 30 * 24 * 60 * 60);
-                break;
-            case '1y': // 一年
-                $timeAgo = $now - (365 * 24 * 60 * 60);
-                break;
-            case '1w': // 一周 (默认)
-            default:
-                $timeAgo = $now - (7 * 24 * 60 * 60);
-                break;
+            case '1m': $timeCondition .= "1 MONTH)"; break;
+            case '6m': $timeCondition .= "6 MONTH)"; break;
+            case '1y': $timeCondition .= "1 YEAR)"; break;
+            case '1w': default: $timeCondition .= "7 DAY)"; break;
         }
-        $timeAgoJs = $timeAgo * 1000; // 转换为 JavaScript 时间戳
-        
-        // 首先筛选出在时间范围内的帖子
-        $topicsInTimeRange = [];
-        foreach ($topics as $topic) {
-            if ($topic['timestamp'] >= $timeAgoJs) {
-                $topicsInTimeRange[] = $topic;
-            }
-        }
-        $topics = $topicsInTimeRange; // 更新$topics为筛选后的结果
+        $whereClauses[] = $timeCondition;
+    }
 
-        // 计算热度分数 - 基于指定时间范围内的评论数+点赞数，并移除临时字段
-        // 由于已经筛选过，$topics中的所有帖子都在时间范围内
-        foreach ($topics as $key => &$topic) {
-            // 指定时间范围内的帖子，热度 = 评论数 + 点赞数
-            $topic['hotScore'] = ($topic['comments'] ?? 0) + ($topic['likes'] ?? 0);
-        }
-        unset($topic); // 解除引用
-        
-        // 按热度分数降序排序
-        usort($topics, function($a, $b) {
-            return ($b['hotScore'] ?? 0) - ($a['hotScore'] ?? 0);
-        });
-        
-        // 移除临时字段
+    if (!empty($whereClauses)) {
+        $sql .= " WHERE " . implode(" AND ", $whereClauses);
+    }
+
+    if ($sortBy === 'newest') {
+        $sql .= " ORDER BY t.created_at DESC";
+    } else if ($sortBy === 'hottest') {
+        // 热度计算：(views / 10) + likes_count + (comments_count * 2)
+        // 这里的 likes_count 是子查询，comments_count 是表字段
+        $sql .= " ORDER BY (t.views / 10 + (SELECT COUNT(*) FROM topic_likes tl WHERE tl.topic_id = t.id) + (t.comments_count * 2)) DESC, t.created_at DESC";
+    }
+    // 可以添加分页逻辑 LIMIT :offset, :limit
+
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $topics = $stmt->fetchAll();
+
         foreach ($topics as &$topic) {
-            unset($topic['hotScore']);
+            $topic['categoryName'] = getCategoryName($topic['category']);
+            $topic['timestamp'] = strtotime($topic['created_at']) * 1000; // 转为JS时间戳
+            $topic['author'] = $topic['author_nickname']; // 统一字段名
+            $topic['likes'] = (int)$topic['likes_count'];
+            $topic['comments'] = (int)$topic['comments_count'];
+            $topic['currentUserLiked'] = (bool)$topic['currentUserLiked'];
+
+            // 获取话题的标签
+            $stmtTags = $pdo->prepare("SELECT ta.name FROM tags ta JOIN topic_tags tt ON ta.id = tt.tag_id WHERE tt.topic_id = ?");
+            $stmtTags->execute([$topic['id']]);
+            $topic['tags'] = $stmtTags->fetchAll(PDO::FETCH_COLUMN);
+
+            // 获取话题的图片
+            $stmtImages = $pdo->prepare("SELECT path FROM images WHERE related_id = ? AND entity_type = 'topic'");
+            $stmtImages->execute([$topic['id']]);
+            $topic['images'] = $stmtImages->fetchAll(PDO::FETCH_COLUMN);
         }
-        unset($topic); // 解除引用
-    } 
-    
-    jsonResponse([
-        'success' => true,
-        'topics' => $topics
-    ]);
+        unset($topic);
+
+        jsonResponse(['success' => true, 'topics' => $topics]);
+
+    } catch (PDOException $e) {
+        jsonResponse(['success' => false, 'message' => '获取话题列表失败: ' . $e->getMessage()]);
+    }
 }
 // 获取单个话题详情
 else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id'])) {
     $topicId = $_GET['id'];
-    
-    // 读取话题文件
-    $topicsData = readJsonFile($topicsFile); 
-    if (empty($topicsData)) {
-        jsonResponse([
-            'success' => false,
-            'message' => '话题数据文件不存在或为空'
-        ]);
+
+    try {
+        // 增加浏览量
+        $stmtUpdateViews = $pdo->prepare("UPDATE topics SET views = views + 1 WHERE id = ?");
+        $stmtUpdateViews->execute([$topicId]);
+
+        $sql = "SELECT t.id, t.user_id, t.title, t.content, t.category, t.is_anonymous, t.views, t.comments_count, t.created_at,
+                       IF(t.is_anonymous, '匿名用户', u.nickname) as author_nickname,
+                       (SELECT COUNT(*) FROM topic_likes tl WHERE tl.topic_id = t.id) as likes_count";
+        if ($currentUserId) {
+            $sql .= ", (SELECT COUNT(*) FROM topic_likes tl WHERE tl.topic_id = t.id AND tl.user_id = :currentUserId) > 0 as currentUserLiked";
+        } else {
+            $sql .= ", 0 as currentUserLiked";
+        }
+        $sql .= " FROM topics t JOIN users u ON t.user_id = u.id WHERE t.id = :topicId";
+        
+        $stmt = $pdo->prepare($sql);
+        $params = [':topicId' => $topicId];
+        if ($currentUserId) {
+            $params[':currentUserId'] = $currentUserId;
+        }
+        $stmt->execute($params);
+        $topic = $stmt->fetch();
+
+        if ($topic) {
+            $topic['categoryName'] = getCategoryName($topic['category']);
+            $topic['timestamp'] = strtotime($topic['created_at']) * 1000;
+            $topic['author'] = $topic['author_nickname'];
+            $topic['likes'] = (int)$topic['likes_count'];
+            $topic['comments'] = (int)$topic['comments_count'];
+            $topic['currentUserLiked'] = (bool)$topic['currentUserLiked'];
+
+            // 获取标签
+            $stmtTags = $pdo->prepare("SELECT ta.name FROM tags ta JOIN topic_tags tt ON ta.id = tt.tag_id WHERE tt.topic_id = ?");
+            $stmtTags->execute([$topicId]);
+            $topic['tags'] = $stmtTags->fetchAll(PDO::FETCH_COLUMN);
+
+            // 获取图片
+            $stmtImages = $pdo->prepare("SELECT path FROM images WHERE related_id = ? AND entity_type = 'topic'");
+            $stmtImages->execute([$topicId]);
+            $topic['images'] = $stmtImages->fetchAll(PDO::FETCH_COLUMN);
+            
+            jsonResponse(['success' => true, 'topic' => $topic]);
+        } else {
+            jsonResponse(['success' => false, 'message' => '话题不存在']);
+        }
+    } catch (PDOException $e) {
+        jsonResponse(['success' => false, 'message' => '获取话题详情失败: ' . $e->getMessage()]);
     }
-    
-    // 查找指定话题
-    $topic = null;
-    $topicIndex = -1;
-    foreach ($topicsData as $index => &$t) {
-        if ($t['id'] === $topicId) {
-            // 增加浏览量
-            $t['views'] = ($t['views'] ?? 0) + 1;
-            $topic = $t;
+} else {
+    jsonResponse(['success' => false, 'message' => '请求方法不允许或参数错误']);
+}
+?>
             $topicIndex = $index;
             break;
         }
