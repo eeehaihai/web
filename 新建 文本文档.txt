@@ -48,3 +48,28 @@
 2025/06/19 19:42:41 [notice] 14252#28228: create thread 18684
 2025/06/19 19:42:48 [error] 27248#28524: *1 CreateFile() "D:/mylearn/phpstudy_pro/WWW/hwk1/favicon.ico" failed (2: The system cannot find the file specified), client: 127.0.0.1, server: blablabla, request: "GET /favicon.ico HTTP/1.1", host: "blablabla", referrer: "http://blablabla/"
 2025/06/19 19:42:48 [error] 27248#28524: *1 CreateFile() "D:/mylearn/phpstudy_pro/WWW/hwk1/error/404.html" failed (3: The system cannot find the path specified), client: 127.0.0.1, server: blablabla, request: "GET /favicon.ico HTTP/1.1", host: "blablabla", referrer: "http://blablabla/"
+2025/06/21 21:02:43 [notice] 36708#15964: using the "select" event method
+2025/06/21 21:02:43 [notice] 36708#15964: nginx/1.15.11
+2025/06/21 21:02:43 [notice] 36708#15964: start worker processes
+2025/06/21 21:02:43 [notice] 36708#15964: start worker process 38568
+2025/06/21 21:02:44 [notice] 38568#3956: nginx/1.15.11
+2025/06/21 21:02:44 [notice] 38568#3956: create thread 35200
+2025/06/21 21:02:44 [notice] 38568#3956: create thread 11020
+2025/06/21 21:02:44 [notice] 38568#3956: create thread 30368
+2025/06/21 21:02:44 [notice] 36708#15964: start worker process 37948
+2025/06/21 21:02:44 [notice] 37948#16780: nginx/1.15.11
+2025/06/21 21:02:44 [notice] 37948#16780: create thread 40004
+2025/06/21 21:02:44 [notice] 37948#16780: create thread 8804
+2025/06/21 21:02:44 [notice] 37948#16780: create thread 24872
+2025/06/21 21:02:44 [notice] 36708#15964: start worker process 22112
+2025/06/21 21:02:44 [notice] 22112#24472: nginx/1.15.11
+2025/06/21 21:02:44 [notice] 22112#24472: create thread 8228
+2025/06/21 21:02:44 [notice] 22112#24472: create thread 39660
+2025/06/21 21:02:44 [notice] 22112#24472: create thread 33368
+2025/06/21 21:02:45 [notice] 36708#15964: start worker process 3080
+2025/06/21 21:02:45 [notice] 3080#36528: nginx/1.15.11
+2025/06/21 21:02:45 [notice] 3080#36528: create thread 17804
+2025/06/21 21:02:45 [notice] 3080#36528: create thread 39416
+2025/06/21 21:02:45 [notice] 3080#36528: create thread 13644
+2025/06/21 21:02:47 [error] 38568#35200: *2 CreateFile() "D:/mylearn/phpstudy_pro/WWW/hwk1/favicon.ico" failed (2: The system cannot find the file specified), client: 127.0.0.1, server: blablabla, request: "GET /favicon.ico HTTP/1.1", host: "blablabla", referrer: "http://blablabla/"
+2025/06/21 21:02:47 [error] 38568#35200: *2 CreateFile() "D:/mylearn/phpstudy_pro/WWW/hwk1/error/404.html" failed (3: The system cannot find the path specified), client: 127.0.0.1, server: blablabla, request: "GET /favicon.ico HTTP/1.1", host: "blablabla", referrer: "http://blablabla/"

@@ -16,10 +16,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = isset($_POST['password']) ? $_POST['password'] : '';
     $email = isset($_POST['email']) ? trim($_POST['email']) : '';
     $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
-    $nickname = isset($_POST['nickname']) ? trim($_POST['nickname']) : ''; 
     
     // 简单验证
-    if (empty($username) || empty($password) || empty($email) || empty($phone) || empty($nickname)) { 
+    if (empty($username) || empty($password) || empty($email) || empty($phone)) { 
         jsonResponse([
             'success' => false,
             'message' => '请填写所有必填字段'
@@ -93,8 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
         // 添加新用户
-        $stmt = $pdo->prepare("INSERT INTO users (username, nickname, password, email, phone) VALUES (?, ?, ?, ?, ?)");
-        if ($stmt->execute([$username, $nickname, $hashedPassword, $email, $phone])) {
+        $stmt = $pdo->prepare("INSERT INTO users (username, password, email, phone) VALUES (?, ?, ?, ?)");
+        if ($stmt->execute([$username, $hashedPassword, $email, $phone])) {
             jsonResponse([
                 'success' => true,
                 'message' => '注册成功'
@@ -118,14 +117,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'success' => false,
         'message' => '请求方法不允许'
     ]);
-}
-?>
-// 确保 jsonResponse 函数可用 (如果它在 utils.php 中，并且 utils.php 没有被包含)
-if (!function_exists('jsonResponse')) {
-    function jsonResponse($data) {
-        header('Content-Type: application/json');
-        echo json_encode($data, JSON_UNESCAPED_UNICODE);
-        exit;
-    }
 }
 ?>

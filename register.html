@@ -17,35 +17,32 @@
                 <legend>基本信息</legend>
                 <div class="form-group">
                     <label for="username" class="required">用户名</label>
-                    <input type="text" id="username" name="username" required placeholder="请输入5-20位字母、数字或下划线" pattern="[a-zA-Z0-9_]{5,20}">
+                    <input type="text" id="username" name="username" required placeholder="5-20位字母、数字或下划线">
                     <span id="username_message" style="color: red; font-size: 14px;"></span>
                 </div>
                 
                 <div class="form-group">
                     <label for="password" class="required">密码</label>
-                    <input type="password" id="password" name="password" required placeholder="请设置8位以上密码" minlength="8">
+                    <input type="password" id="password" name="password" required placeholder="至少8位">
+                    <span id="password_message" style="color: red; font-size: 14px;"></span>
                 </div>
                 
                 <div class="form-group">
                     <label for="confirm_password" class="required">确认密码</label>
-                    <input type="password" id="confirm_password" name="confirm_password" required placeholder="请再次输入密码" minlength="8">
+                    <input type="password" id="confirm_password" name="confirm_password" required placeholder="再次输入密码">
                     <span id="password_match_message" style="color: red; font-size: 14px;"></span>
                 </div>
 
                 <div class="form-group">
                     <label for="email" class="required">电子邮箱</label>
-                    <input type="email" id="email" name="email" required placeholder="请输入有效的电子邮箱">
+                    <input type="email" id="email" name="email" required placeholder="请输入有效的邮箱地址">
                     <span id="email_message" style="color: red; font-size: 14px;"></span>
                 </div>
                 
                 <div class="form-group">
                     <label for="phone" class="required">手机号码</label>
-                    <input type="tel" id="phone" name="phone" required placeholder="请输入11位手机号码" pattern="[0-9]{11}">
+                    <input type="tel" id="phone" name="phone" required placeholder="请输入11位手机号码">
                     <span id="phone_message" style="color: red; font-size: 14px;"></span>
-                </div>
-                 <div class="form-group"> <!-- 添加昵称输入字段 -->
-                    <label for="nickname" class="required">昵称</label>
-                    <input type="text" id="nickname" name="nickname" required placeholder="请输入您的昵称">
                 </div>
             </fieldset>
             
@@ -255,11 +252,9 @@
         function submitRegistration() {
             // 执行表单验证
             if(!validateForm()) {
-                // 如果验证失败，在 register.js 中的验证函数会显示具体错误信息
+                // 如果验证失败，显示通用错误消息或特定字段的错误
                 const messageBox = document.getElementById('registerMessage');
-                messageBox.innerHTML = '请检查表单中的错误信息！';
-                messageBox.className = 'message-box error';
-                messageBox.style.display = 'block';
+                showMessageElement(messageBox, '请检查表单中红色标记的字段。', 'error');
                 return;
             }
             
@@ -268,7 +263,7 @@
             const password = document.getElementById('password').value;
             const email = document.getElementById('email').value;
             const phone = document.getElementById('phone').value;
-            const nickname = document.getElementById('nickname').value;
+            // const nickname = document.getElementById('nickname').value; // 移除昵称
             
             const messageBox = document.getElementById('registerMessage');
             
@@ -283,7 +278,7 @@
             formData.append('password', password);
             formData.append('email', email);
             formData.append('phone', phone);
-            formData.append('nickname', nickname);
+            // formData.append('nickname', nickname); // 移除昵称
             
             // 使用AJAX发送请求到PHP处理文件
             const xhr = new XMLHttpRequest();

@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // 检查是用户名还是邮箱
         $field = filter_var($usernameOrEmail, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
         
-        $stmt = $pdo->prepare("SELECT id, username, password, nickname FROM users WHERE $field = ?");
+        $stmt = $pdo->prepare("SELECT id, username, password FROM users WHERE $field = ?");
         $stmt->execute([$usernameOrEmail]);
         $user = $stmt->fetch();
         
@@ -38,13 +38,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // 密码匹配，登录成功
             $_SESSION['login'] = $user['username']; // 存储用户名到会话
             $_SESSION['login_user_id'] = $user['id']; // 存储用户ID到会话
-            $_SESSION['login_user_nickname'] = $user['nickname']; // 存储用户昵称到会话
             
             jsonResponse([
                 'success' => true,
                 'message' => '登录成功',
-                'username' => $user['username'], // 可以选择返回用户名给前端
-                'nickname' => $user['nickname']
+                'username' => $user['username'] // 可以选择返回用户名给前端
             ]);
         } else {
             // 用户不存在或密码错误
@@ -66,11 +64,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'message' => '请求方法不允许'
     ]);
 }
-?>
-    function jsonResponse($data) {
-        header('Content-Type: application/json');
-        echo json_encode($data, JSON_UNESCAPED_UNICODE);
-        exit;
-    }
+
+function jsonResponse($data) {
+    header('Content-Type: application/json');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    exit;
 }
 ?>

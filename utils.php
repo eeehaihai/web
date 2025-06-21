@@ -167,28 +167,22 @@ function getCurrentUserId() {
             // Session 中的 User ID 失效/无效。清除 session 以强制重新登录。
             unset($_SESSION['login_user_id']);
             unset($_SESSION['login']);
-            unset($_SESSION['login_user_nickname']);
             return null; // 相当于为此请求的目的注销用户
         }
     }
 
     // 如果 session 中只有用户名，可以通过用户名查询ID
     if (isset($_SESSION['login'])) {
-        $stmt = $pdo->prepare("SELECT id, nickname FROM users WHERE username = ?");
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?"); // 只查询id
         $stmt->execute([$_SESSION['login']]);
         $user = $stmt->fetch();
         if ($user) {
             $_SESSION['login_user_id'] = $user['id']; // 为将来的调用设置它
-            // 确保昵称也同步/设置
-            if (isset($user['nickname'])) {
-                $_SESSION['login_user_nickname'] = $user['nickname'];
-            }
             return $user['id'];
         } else {
             // Session 中的用户名在数据库中未找到。清除 session。
             unset($_SESSION['login_user_id']); // 也清除 user_id
             unset($_SESSION['login']);
-            unset($_SESSION['login_user_nickname']);
             return null;
         }
     }

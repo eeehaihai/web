@@ -68,29 +68,3 @@ try {
     jsonResponse(['success' => false, 'message' => '操作失败: ' . $e->getMessage()]);
 }
 ?>
-    }
-}
-unset($topic); // 解除引用
-
-if (!$found) {
-    jsonResponse([
-        'success' => false,
-        'message' => '话题不存在'
-    ]);
-}
-
-// 保存更新后的话题数据
-if (saveJsonFile($topicsFile, $topics)) {
-    jsonResponse([
-        'success' => true,
-        'message' => $currentUserLiked ? '点赞成功' : '取消点赞成功',
-        'likes' => $newLikesCount,
-        'isLikedByCurrentUser' => $currentUserLiked
-    ]);
-} else {
-    jsonResponse([
-        'success' => false,
-        'message' => getDetailedSaveError($topicsFile, '操作失败，无法保存数据')
-    ]);
-}
-?>

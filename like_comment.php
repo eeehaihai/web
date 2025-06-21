@@ -25,8 +25,6 @@ if (empty($commentId)) {
 try {
     // 检查评论是否存在
     $stmtCheckComment = $pdo->prepare("SELECT id FROM comments WHERE id = ?");
-    // 如果需要，可以加入 topic_id 的验证: "SELECT id FROM comments WHERE id = ? AND topic_id = ?"
-    // $stmtCheckComment->execute([$commentId, $topicId]);
     $stmtCheckComment->execute([$commentId]);
     if (!$stmtCheckComment->fetch()) {
         jsonResponse(['success' => false, 'message' => '评论不存在']);
@@ -66,24 +64,5 @@ try {
 
 } catch (PDOException $e) {
     jsonResponse(['success' => false, 'message' => '操作失败: ' . $e->getMessage()]);
-}
-?>
-    }
-    unset($mainComment); // 解除引用
-}
-
-if (!$commentFound) {
-    jsonResponse(['success' => false, 'message' => '评论不存在']);
-}
-
-if (saveJsonFile($commentsFile, $allComments)) {
-    jsonResponse([
-        'success' => true,
-        'message' => $currentUserLiked ? '点赞成功' : '取消点赞成功',
-        'likes' => $newLikesCount,
-        'isLikedByCurrentUser' => $currentUserLiked
-    ]);
-} else {
-    jsonResponse(['success' => false, 'message' => getDetailedSaveError($commentsFile, '操作失败，无法保存数据')]);
 }
 ?>

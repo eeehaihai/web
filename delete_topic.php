@@ -123,10 +123,3 @@ try {
     jsonResponse(['success' => false, 'message' => '删除失败: ' . $e->getMessage()]);
 }
 ?>
-} else {
-    jsonResponse([
-        'success' => false,
-        'message' => getDetailedSaveError($topicsFile, '帖子删除失败，无法保存数据')
-    ]);
-}
-?>

@@ -84,7 +84,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'GET' && !isset($_GET['id'])) {
     $searchTerm = isset($_GET['searchTerm']) ? trim($_GET['searchTerm']) : null;
 
     $sql = "SELECT t.id, t.user_id, t.title, t.content, t.category, t.is_anonymous, t.views, t.comments_count, t.created_at, t.updated_at, 
-                   IF(t.is_anonymous, '匿名用户', u.nickname) as author_nickname,
+                   IF(t.is_anonymous, '匿名用户', u.username) as author_username, -- 使用 username
                    (SELECT COUNT(*) FROM topic_likes tl WHERE tl.topic_id = t.id) as likes_count";
     if ($currentUserId) {
         $sql .= ", (SELECT COUNT(*) FROM topic_likes tl WHERE tl.topic_id = t.id AND tl.user_id = :currentUserId) > 0 as currentUserLiked";
@@ -143,7 +143,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'GET' && !isset($_GET['id'])) {
         foreach ($topics as &$topic) {
             $topic['categoryName'] = getCategoryName($topic['category']);
             $topic['timestamp'] = strtotime($topic['created_at']) * 1000; // 转为JS时间戳
-            $topic['author'] = $topic['author_nickname']; // 统一字段名
+            $topic['author'] = $topic['author_username']; // 统一字段名，确保这里是 username
             $topic['likes'] = (int)$topic['likes_count'];
             $topic['comments'] = (int)$topic['comments_count'];
             $topic['currentUserLiked'] = (bool)$topic['currentUserLiked'];
@@ -176,7 +176,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id'])) {
         $stmtUpdateViews->execute([$topicId]);
 
         $sql = "SELECT t.id, t.user_id, t.title, t.content, t.category, t.is_anonymous, t.views, t.comments_count, t.created_at,
-                       IF(t.is_anonymous, '匿名用户', u.nickname) as author_nickname,
+                       IF(t.is_anonymous, '匿名用户', u.username) as author_username, -- 使用 username
                        (SELECT COUNT(*) FROM topic_likes tl WHERE tl.topic_id = t.id) as likes_count";
         if ($currentUserId) {
             $sql .= ", (SELECT COUNT(*) FROM topic_likes tl WHERE tl.topic_id = t.id AND tl.user_id = :currentUserId) > 0 as currentUserLiked";
@@ -196,7 +196,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id'])) {
         if ($topic) {
             $topic['categoryName'] = getCategoryName($topic['category']);
             $topic['timestamp'] = strtotime($topic['created_at']) * 1000;
-            $topic['author'] = $topic['author_nickname'];
+            $topic['author'] = $topic['author_username']; // 确保这里是 username
             $topic['likes'] = (int)$topic['likes_count'];
             $topic['comments'] = (int)$topic['comments_count'];
             $topic['currentUserLiked'] = (bool)$topic['currentUserLiked'];
