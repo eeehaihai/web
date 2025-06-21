@@ -103,11 +103,10 @@ else if ($_SERVER['REQUEST_METHOD'] === 'GET' && !isset($_GET['id'])) {
     if ($categoryFilter !== 'all') {
         $whereClauses[] = "t.category = :category";
         $params[':category'] = $categoryFilter;
-    }
-
-    if ($searchTerm) {
-        $whereClauses[] = "(t.title LIKE :searchTerm OR t.content LIKE :searchTerm OR EXISTS (SELECT 1 FROM topic_tags tt JOIN tags ta ON tt.tag_id = ta.id WHERE tt.topic_id = t.id AND ta.name LIKE :searchTermTag))";
-        $params[':searchTerm'] = "%$searchTerm%";
+    }    if ($searchTerm) {
+        $whereClauses[] = "(t.title LIKE :searchTermTitle OR t.content LIKE :searchTermContent OR EXISTS (SELECT 1 FROM topic_tags tt JOIN tags ta ON tt.tag_id = ta.id WHERE tt.topic_id = t.id AND ta.name LIKE :searchTermTag))";
+        $params[':searchTermTitle'] = "%$searchTerm%";
+        $params[':searchTermContent'] = "%$searchTerm%";
         $params[':searchTermTag'] = "%$searchTerm%";
     }
     

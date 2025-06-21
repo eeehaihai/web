@@ -65,9 +65,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ]);
 }
 
-function jsonResponse($data) {
-    header('Content-Type: application/json');
-    echo json_encode($data, JSON_UNESCAPED_UNICODE);
-    exit;
-}
-?>
+
